@@ -1,0 +1,184 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Case Converter</title>
+<link rel="icon" href="data:image/svg+xml,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 32 32'><rect width='32' height='32' rx='8' fill='%231C644E'/><text x='5' y='22' font-family='Georgia,serif' font-size='18' font-weight='700' fill='white'>Aa</text></svg>">
+<style>
+  *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+  :root { --green-dark: #0E382E; --green-mid: #1C644E; --green-border: #b0cfc5; }
+  html, body { height: 100%; }
+  body { font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif; background: #fff; color: #1a1a18; min-height: 100vh; display: flex; justify-content: center; padding: 3rem 1.5rem; }
+  .container { width: 100%; max-width: 640px; }
+  h1 { font-size: 18px; font-weight: 500; color: var(--green-dark); margin-bottom: 1.75rem; letter-spacing: -0.01em; }
+  .btn-group { display: flex; gap: 0; margin-bottom: 1.5rem; border: 1.5px solid var(--green-mid); border-radius: 10px; overflow: hidden; width: fit-content; }
+  .op-btn { padding: 9px 20px; font-size: 14px; font-weight: 500; border: none; border-right: 1px solid var(--green-border); background: #fff; color: var(--green-dark); cursor: pointer; transition: background 0.12s, color 0.12s; font-family: inherit; letter-spacing: 0.01em; }
+  .op-btn:last-child { border-right: none; }
+  .op-btn:hover { background: #f0f7f4; }
+  .op-btn.active { background: var(--green-mid); color: #fff; }
+  .op-btn[data-op="toAllCaps"] { letter-spacing: 0.08em; font-size: 12px; }
+  .label { font-size: 11px; font-weight: 500; color: var(--green-dark); opacity: 0.6; text-transform: uppercase; letter-spacing: 0.07em; margin-bottom: 8px; }
+  .text-area-wrap { position: relative; margin-bottom: 0.75rem; }
+  textarea { width: 100%; min-height: 140px; font-size: 15px; line-height: 1.65; padding: 14px; padding-right: 40px; resize: vertical; border-radius: 12px; border: 1.5px solid #d0d0d0; background: #fff; color: #1a1a18; font-family: inherit; outline: none; transition: border-color 0.12s; }
+  textarea:focus { border-color: var(--green-mid); }
+  textarea::placeholder { color: #b4b2a9; }
+  .clear-btn { position: absolute; top: 10px; right: 10px; background: none; border: none; cursor: pointer; color: #b4b2a9; padding: 4px; border-radius: 4px; font-size: 18px; line-height: 1; transition: color 0.12s; }
+  .clear-btn:hover { color: var(--green-mid); }
+  .arrow-row { display: flex; justify-content: center; margin: 0.6rem 0; color: var(--green-mid); font-size: 18px; opacity: 0.4; }
+  .result-box { background: #fff; border: 1.5px solid #d0d0d0; border-radius: 12px; padding: 14px; font-size: 15px; line-height: 1.65; color: #1a1a18; min-height: 80px; word-break: break-word; white-space: pre-wrap; user-select: text; }
+  .result-placeholder { color: #b4b2a9; }
+  .copy-row { display: flex; align-items: center; justify-content: space-between; margin-top: 0.75rem; }
+  .char-count { font-size: 12px; color: #999; }
+  .copy-btn { display: flex; align-items: center; gap: 6px; padding: 7px 16px; font-size: 13px; font-family: inherit; font-weight: 500; border: 1.5px solid var(--green-mid); border-radius: 8px; background: #fff; color: var(--green-mid); cursor: pointer; transition: background 0.12s, color 0.12s; }
+  .copy-btn:hover { background: var(--green-mid); color: #fff; }
+  .copy-btn.copied { background: var(--green-dark); color: #fff; border-color: var(--green-dark); }
+</style>
+</head>
+<body>
+<div class="container">
+  <h1>Case converter</h1>
+  <div class="btn-group" id="btnGroup">
+    <button class="op-btn active" data-op="toSentence">Sentence case</button>
+    <button class="op-btn" data-op="toTitle">Title Case</button>
+    <button class="op-btn" data-op="toAllCaps">ALL CAPS</button>
+  </div>
+  <div class="label">Input</div>
+  <div class="text-area-wrap">
+    <textarea id="inputText" placeholder="Paste your text here…"></textarea>
+    <button class="clear-btn" id="clearBtn" title="Clear">✕</button>
+  </div>
+  <div class="arrow-row">↓</div>
+  <div class="label">Result</div>
+  <div class="result-box" id="resultBox">
+    <span class="result-placeholder">Your converted text will appear here</span>
+  </div>
+  <div class="copy-row">
+    <span class="char-count" id="charCount"></span>
+    <button class="copy-btn" id="copyBtn">&#128203; Copy result</button>
+  </div>
+</div>
+<script>
+const ALWAYS_UPPERCASE = new Set([
+  'FBI','CIA','GOP','NASA','NATO','UN','US','UK','EU','USA',
+  'CDC','FDA','IRS','DOJ','DOD','DHS','ICE','DEA','ATF',
+  'LGBTQ','LGBTQ+','HIV','AIDS','COVID','CEO','CFO','COO',
+  'NYPD','LAPD','SCOTUS','POTUS','FLOTUS','VP','AG',
+  'ABC','NBC','CBS','CNN','FOX','NYT','AP','WH',
+  'OK','DC','NY','LA','SF','AI','AR','VR','PR',
+  'PC','TV','AM','PM','BC','AD','PHD','MD','JR','SR',
+]);
+
+function isAcronym(word) {
+  const clean = word.replace(/[\u2018\u2019\u201C\u201D'"][a-zA-Z]*$/i, '').replace(/[^A-Za-z+]/g, '').toUpperCase();
+  return ALWAYS_UPPERCASE.has(clean);
+}
+
+function toSentenceCase(headline) {
+  if (!headline || !headline.trim()) return '';
+  let text = headline.trim();
+  text = text.replace(/:\s+/g, ' \u2014 ');
+  const words = text.split(/(\s+)/);
+  const result = [];
+  let isFirstWord = true;
+  for (let i = 0; i < words.length; i++) {
+    const token = words[i];
+    if (/^\s+$/.test(token)) { result.push(token); continue; }
+    if (token === '\u2014') { result.push(token); continue; }
+    const punctMatch = token.match(/^([\u2018\u2019\u201C\u201D'"]?)([a-zA-Z][a-zA-Z\u2018\u2019\u201C\u201D'"]*)([\u2018\u2019\u201C\u201D'"]?)([^a-zA-Z]*)$/);
+    if (!punctMatch) { result.push(token.toLowerCase()); continue; }
+    const [, openQuote, word, closeQuote, suffix] = punctMatch;
+    if (isAcronym(word)) {
+      const apoIdx = word.search(/[\u2018\u2019\u201C\u201D'']/);
+      if (apoIdx > -1) {
+        result.push(openQuote + word.slice(0, apoIdx).toUpperCase() + word.slice(apoIdx).toLowerCase() + closeQuote + suffix);
+      } else {
+        result.push(openQuote + word.toUpperCase() + closeQuote + suffix);
+      }
+      isFirstWord = false;
+      continue;
+    }
+    if (isFirstWord) {
+      result.push(openQuote + word[0].toUpperCase() + word.slice(1).toLowerCase() + closeQuote + suffix);
+      isFirstWord = false;
+      continue;
+    }
+    result.push(openQuote + word.toLowerCase() + closeQuote + suffix);
+  }
+  let final = result.join('');
+  final = final.replace(/([.!?]\s+)([a-z])/g, (_, p, c) => p + c.toUpperCase());
+  final = final.replace(/\bi\b/g, 'I');
+  return final;
+}
+
+function toTitleCase(text) {
+  return text.toLowerCase().split(/(\s+)/).map(token => {
+    if (/^\s+$/.test(token)) return token;
+    const m = token.match(/^([\u2018\u2019\u201C\u201D'"]?)([a-zA-Z][a-zA-Z\u2018\u2019'"]*)(.*)$/);
+    if (!m) return token;
+    const [, open, word, rest] = m;
+    if (isAcronym(word)) return open + word.toUpperCase() + rest;
+    return open + word[0].toUpperCase() + word.slice(1) + rest;
+  }).join('');
+}
+
+function toAllCaps(text) { return text.toUpperCase(); }
+
+let activeOp = 'toSentence';
+const ops = { toSentence: toSentenceCase, toTitle: toTitleCase, toAllCaps: toAllCaps };
+const inputEl = document.getElementById('inputText');
+const resultEl = document.getElementById('resultBox');
+const copyBtn = document.getElementById('copyBtn');
+const charCount = document.getElementById('charCount');
+
+inputEl.addEventListener('paste', e => {
+  e.preventDefault();
+  const plain = e.clipboardData.getData('text/plain');
+  document.execCommand('insertText', false, plain);
+});
+
+function convert() {
+  const raw = inputEl.value;
+  if (!raw.trim()) {
+    resultEl.innerHTML = '<span class="result-placeholder">Your converted text will appear here</span>';
+    charCount.textContent = '';
+    return;
+  }
+  const result = ops[activeOp](raw);
+  resultEl.textContent = result;
+  charCount.textContent = result.length + ' chars';
+}
+
+document.getElementById('btnGroup').addEventListener('click', e => {
+  const btn = e.target.closest('[data-op]');
+  if (!btn) return;
+  document.querySelectorAll('.op-btn').forEach(b => b.classList.remove('active'));
+  btn.classList.add('active');
+  activeOp = btn.dataset.op;
+  convert();
+});
+
+inputEl.addEventListener('input', convert);
+
+document.getElementById('clearBtn').addEventListener('click', () => {
+  inputEl.value = '';
+  resultEl.innerHTML = '<span class="result-placeholder">Your converted text will appear here</span>';
+  charCount.textContent = '';
+  inputEl.focus();
+});
+
+copyBtn.addEventListener('click', () => {
+  const text = resultEl.textContent;
+  if (!text || text === 'Your converted text will appear here') return;
+  navigator.clipboard.writeText(text).then(() => {
+    copyBtn.classList.add('copied');
+    copyBtn.textContent = '✓ Copied!';
+    setTimeout(() => {
+      copyBtn.classList.remove('copied');
+      copyBtn.innerHTML = '&#128203; Copy result';
+    }, 2000);
+  });
+});
+</script>
+</body>
+</html>
