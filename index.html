@@ -26,8 +26,6 @@
   .clear-btn { position: absolute; top: 10px; right: 10px; background: none; border: none; cursor: pointer; color: #b4b2a9; padding: 4px; border-radius: 4px; font-size: 18px; line-height: 1; transition: color 0.12s; }
   .clear-btn:hover { color: var(--green-mid); }
   .arrow-row { display: flex; justify-content: center; margin: 0.6rem 0; color: var(--green-mid); font-size: 18px; opacity: 0.4; }
-  .result-box { background: #fff; border: 1.5px solid #d0d0d0; border-radius: 12px; padding: 14px; font-size: 15px; line-height: 1.65; color: #1a1a18; min-height: 80px; word-break: break-word; white-space: pre-wrap; user-select: text; }
-  .result-placeholder { color: #b4b2a9; }
   .copy-row { display: flex; align-items: center; justify-content: space-between; margin-top: 0.75rem; }
   .char-count { font-size: 12px; color: #999; }
   .copy-btn { display: flex; align-items: center; gap: 6px; padding: 7px 16px; font-size: 13px; font-family: inherit; font-weight: 500; border: 1.5px solid var(--green-mid); border-radius: 8px; background: #fff; color: var(--green-mid); cursor: pointer; transition: background 0.12s, color 0.12s; }
@@ -50,8 +48,9 @@
   </div>
   <div class="arrow-row">↓</div>
   <div class="label">Result</div>
-  <div class="result-box" id="resultBox">
-    <span class="result-placeholder">Your converted text will appear here</span>
+  <div class="text-area-wrap">
+    <textarea id="resultText" placeholder="Your converted text will appear here"></textarea>
+    <button class="clear-btn" id="clearResultBtn" title="Clear">✕</button>
   </div>
   <div class="copy-row">
     <span class="char-count" id="charCount"></span>
@@ -127,7 +126,7 @@ function toAllCaps(text) { return text.toUpperCase(); }
 let activeOp = 'toSentence';
 const ops = { toSentence: toSentenceCase, toTitle: toTitleCase, toAllCaps: toAllCaps };
 const inputEl = document.getElementById('inputText');
-const resultEl = document.getElementById('resultBox');
+const resultEl = document.getElementById('resultText');
 const copyBtn = document.getElementById('copyBtn');
 const charCount = document.getElementById('charCount');
 
@@ -140,12 +139,12 @@ inputEl.addEventListener('paste', e => {
 function convert() {
   const raw = inputEl.value;
   if (!raw.trim()) {
-    resultEl.innerHTML = '<span class="result-placeholder">Your converted text will appear here</span>';
+    resultEl.value = '';
     charCount.textContent = '';
     return;
   }
   const result = ops[activeOp](raw);
-  resultEl.textContent = result;
+  resultEl.value = result;
   charCount.textContent = result.length + ' chars';
 }
 
@@ -162,14 +161,20 @@ inputEl.addEventListener('input', convert);
 
 document.getElementById('clearBtn').addEventListener('click', () => {
   inputEl.value = '';
-  resultEl.innerHTML = '<span class="result-placeholder">Your converted text will appear here</span>';
+  resultEl.value = '';
   charCount.textContent = '';
   inputEl.focus();
 });
 
+document.getElementById('clearResultBtn').addEventListener('click', () => {
+  resultEl.value = '';
+  charCount.textContent = '';
+  resultEl.focus();
+});
+
 copyBtn.addEventListener('click', () => {
-  const text = resultEl.textContent;
-  if (!text || text === 'Your converted text will appear here') return;
+  const text = resultEl.value;
+  if (!text) return;
   navigator.clipboard.writeText(text).then(() => {
     copyBtn.classList.add('copied');
     copyBtn.textContent = '✓ Copied!';
